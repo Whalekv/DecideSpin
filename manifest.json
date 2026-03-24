@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "随机转盘",
+  "description": "一个完全由用户自定义的随机决策转盘工具",
+  "version": "1.0.0",
+  "icons": {
+    "48": "icons/icon-48.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "随机转盘"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["setting.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
