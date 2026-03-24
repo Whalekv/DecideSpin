@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机转盘</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 转盘区域 -->
+        <div class="wheel-container">
+            <div id="wheel" class="wheel"></div>
+            <div class="pointer"></div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="results-panel">
+            <h3>本次转动结果</h3>
+            <ol id="results-list"></ol>
+        </div>
+
+        <!-- 操作按钮区 -->
+        <div class="actions">
+            <button id="spin-btn" class="spin-btn">开始转动</button>
+            <button id="reset-btn" class="reset-btn">重置</button>
+            <button id="open-setting-btn" class="setting-btn">前往设置</button>
+        </div>
+
+        <!-- 状态信息 -->
+        <div class="status">
+            <span id="spin-info">已转动 0 / 0 次</span>
+        </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+</body>
+</html>
