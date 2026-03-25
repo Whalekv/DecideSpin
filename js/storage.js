@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
   SPIN_COUNT: 'spinCount',
   USED_SPIN_TIMES: 'usedSpinTimes',
   LAST_USED: 'lastUsed',
-  PRESETS: 'presets'
+  PRESETS: 'presets',
+  SPIN_RESULTS: 'spinResults' 
 };
 
 
@@ -108,6 +109,38 @@ function validateSpinCount(count) {
 }
 
 
+// ==================== 结果历史方法 ====================
+
+
+/**
+ * 保存单次转动结果（追加到历史）
+ * @param {string} result 转动结果
+ * @returns {Promise<void>}
+ */
+async function saveSpinResult(result) {
+  const results = await getSpinResults();
+  results.push(result);
+  await setStorage({ [STORAGE_KEYS.SPIN_RESULTS]: results });
+}
+
+/**
+ * 获取所有转动结果历史
+ * @returns {Promise<string[]>}
+ */
+async function getSpinResults() {
+  const data = await getStorage();
+  return data[STORAGE_KEYS.SPIN_RESULTS] || [];
+}
+
+/**
+ * 清空转动结果历史
+ * @returns {Promise<void>}
+ */
+async function clearSpinResults() {
+  await setStorage({ [STORAGE_KEYS.SPIN_RESULTS]: [] });
+}
+
+
 // ==================== 初始化与当前配置核心方法 ====================
 
 
@@ -178,6 +211,7 @@ async function saveCurrentConfig(items, spinCount) {
   };
 
   await setStorage(dataToSave);
+  await clearSpinResults();
   return { success: true, message: "当前配置已保存" };
 }
 
@@ -195,6 +229,7 @@ async function resetAll() {
   };
 
   await setStorage(dataToSave);
+  await clearSpinResults();
   return { success: true, message: "已重置当前转盘数据" };
 }
 
@@ -366,6 +401,9 @@ export {
   getAllPresets,
   addPreset,
   deletePreset,
-  usePreset
+  usePreset,
+  saveSpinResult,      // 新增导出
+  getSpinResults,      // 新增导出
+  clearSpinResults     // 新增导出
 };
 

@@ -3,7 +3,10 @@ import {
     initDefaultData,
     getCurrentConfig,
     incrementUsedSpinTimes,
-    resetAll
+    resetAll,
+    saveSpinResult,      // 新增
+    getSpinResults,      // 新增
+    clearSpinResults     // 新增
 } from './js/storage.js';
 
 
@@ -62,6 +65,9 @@ async function initPopup() {
 
     // 2. 加载当前转盘数据
     await loadCurrentWheelData();
+
+    // 加载并渲染结果历史
+    await loadAndRenderResults();
 
     // 3. 渲染转盘
     renderWheel();
@@ -234,7 +240,6 @@ async function performSpin() {
         return;
     }
 
-    // 1. 增加已转动次数
     const incrementResult = await incrementUsedSpinTimes();
     if (!incrementResult.success) {
         alert(incrementResult.message);
@@ -243,63 +248,65 @@ async function performSpin() {
 
     usedSpinTimes = incrementResult.currentUsed || usedSpinTimes + 1;
 
-    // 2. 计算随机结果
     const randomIndex = Math.floor(Math.random() * currentItems.length);
     const selectedItem = currentItems[randomIndex];
 
-    // 3. 计算最终停止角度（让选中扇区停在指针位置）
     const sliceAngle = 360 / currentItems.length;
-    const targetAngle = randomIndex * sliceAngle + (sliceAngle / 2); // 指向扇区中心
-
-    // 额外多转几圈（视觉效果更好）
-    const extraSpins = 5 + Math.floor(Math.random() * 3); // 5~7圈
+    const targetAngle = randomIndex * sliceAngle + (sliceAngle / 2);
+    const extraSpins = 5 + Math.floor(Math.random() * 3);
     const finalRotate = extraSpins * 360 + (360 - targetAngle);
 
-    // 4. 执行旋转动画
     elements.wheel.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
     elements.wheel.style.transform = `rotate(${finalRotate}deg)`;
     elements.wheelLabels.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
     elements.wheelLabels.style.transform = `rotate(${finalRotate}deg)`;
 
-    // 5. 动画结束后处理结果
-    setTimeout(() => {
-        // 高亮选中扇区（简单实现：轻微缩放或提示）
+    setTimeout(async () => {
         elements.wheel.style.transition = 'transform 0.3s';
         elements.wheel.style.transform = `rotate(${finalRotate}deg) scale(1.03)`;
         elements.wheelLabels.style.transition = 'transform 0.3s';
         elements.wheelLabels.style.transform = `rotate(${finalRotate}deg) scale(1.03)`;
 
-        // 添加到结果列表
-        spinResults.push(selectedItem);
-        renderResultsList();
+        // 保存结果到 storage
+        await saveSpinResult(selectedItem);
+        // 重新加载并渲染结果列表
+        const updatedResults = await getSpinResults();
+        renderResultsList(updatedResults);
 
-        // 更新状态
         updateSpinInfo();
 
-        // 恢复正常缩放
         setTimeout(() => {
             elements.wheel.style.transform = `rotate(${finalRotate}deg)`;
             elements.wheelLabels.style.transform = `rotate(${finalRotate}deg)`;
         }, 300);
+    }, 4000);
+}
 
-    }, 4000); // 等待4秒动画结束
+
+
+/**
+ * 从 storage 加载结果并渲染列表
+ */
+async function loadAndRenderResults() {
+    const results = await getSpinResults();
+    renderResultsList(results);
 }
 
 
 /**
  * 渲染结果列表
  */
-function renderResultsList() {
+function renderResultsList(results) {
     elements.resultsList.innerHTML = '';
-
-    spinResults.forEach((result, index) => {
+    results.forEach((result) => {
         const li = document.createElement('li');
         li.textContent = result;
         elements.resultsList.appendChild(li);
     });
-
     // 自动滚动到底部
-    elements.resultsList.scrollTop = elements.resultsList.scrollHeight;
+    if (elements.resultsList.scrollHeight) {
+        elements.resultsList.scrollTop = elements.resultsList.scrollHeight;
+    }
 }
 
 
@@ -313,21 +320,15 @@ async function resetPopup() {
 
     const result = await resetAll();
     if (result.success) {
-        // 清空内存数据
-        currentItems = [];
-        totalSpinCount = 0;
-        usedSpinTimes = 0;
-        spinResults = [];
+        // 重新加载当前配置（已被重置为空）
+        await loadCurrentWheelData();
+        renderWheel();
 
-        // 重置界面
-        elements.wheel.style.background = '#334155';
-        elements.wheel.style.transform = 'rotate(0deg)';
-        elements.wheelLabels.innerHTML = '';
-        elements.wheelLabels.style.transform = 'rotate(0deg)';
-        elements.resultsList.innerHTML = '';
-        
+        // 结果历史已被 resetAll 清空，重新渲染空列表
+        const emptyResults = await getSpinResults();
+        renderResultsList(emptyResults);
+
         updateSpinInfo();
-        
         alert('已重置！请点击「前往设置」重新配置转盘。');
     }
 }
