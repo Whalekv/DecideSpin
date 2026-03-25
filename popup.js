@@ -145,14 +145,16 @@ function renderWheel() {
  
     elements.wheel.style.background = `conic-gradient(${gradientParts.join(', ')})`;
  
-    // ---- SVG 竖排文字 ----
+    // ---- SVG 竖排文字（逐字符极坐标定位）----
     // viewBox 300×300，圆心 (150,150)，.wheel 有 12px border
+    // 不使用 writing-mode，改为逐字符计算 (x,y) 坐标，沿径向排列
+    // 每个字符绕自身中心旋转，朝向与半径方向垂直（即字的"顶"朝外）
     const cx = 150, cy = 150;
-    const outerR = 124;  // 文字顶端（靠近边缘，留出 border + 少许间距）
-    const innerR = 48;   // 文字底端（靠近圆心）
-    const radialMid = (outerR + innerR) / 2;
+    const outerR = 122;   // 文字最外侧字符的中心
+    const innerR = 50;    // 文字最内侧字符的中心
     const maxChars = 5;
     const fontSize = 13;
+    const charStep = (outerR - innerR) / (maxChars - 1 || 1); // 字符间距
  
     let svgContent = '';
  
@@ -161,23 +163,43 @@ function renderWheel() {
             ? item.slice(0, maxChars) + '…'
             : item;
  
-        // 扇区中心角（CSS conic-gradient: 0°=顶部，顺时针）
+        // 扇区中心角（CSS conic-gradient: 0°=顶部，顺时针）转为标准数学角（弧度）
+        // CSS 0° = 顶部 = 数学 90°（3点钟为0），顺时针 = 数学逆时针
+        // 所以：数学角 = 90° - midAngleDeg（CSS）
         const midAngleDeg = index * sliceAngle + sliceAngle / 2;
-        // SVG rotate: 0°=右侧，顺时针，-90 对齐顶部
-        const rotateDeg = midAngleDeg - 90;
+        const mathAngleRad = (90 - midAngleDeg) * Math.PI / 180;
  
-        svgContent += `<text
-            x="0"
-            y="0"
-            text-anchor="middle"
-            dominant-baseline="central"
-            font-size="${fontSize}"
-            font-weight="600"
-            font-family="system-ui, -apple-system, sans-serif"
-            fill="rgba(255,255,255,0.95)"
-            writing-mode="tb"
-            transform="translate(${cx},${cy}) rotate(${rotateDeg}) rotate(-90) translate(0,${-radialMid})"
-        >${label}</text>`;
+        const charCount = label.length;
+        // 所有字符占用的总径向长度
+        const totalSpan = (charCount - 1) * charStep;
+        // 第一个字符的半径（最靠外）
+        const startR = (outerR + innerR) / 2 + totalSpan / 2;
+ 
+        // 每个字符需要旋转的角度：使字符"正立"朝向圆心
+        // 在标准坐标系中，字符顶朝上(90°)，需旋转到指向圆心方向
+        // 字符朝向 = midAngleDeg（从顶部顺时针），转为 SVG rotate 角度
+        const charRotateDeg = midAngleDeg;
+ 
+        let groupContent = '';
+        for (let i = 0; i < charCount; i++) {
+            const r = startR - i * charStep; // 从外到内
+            const x = cx + r * Math.cos(mathAngleRad);
+            const y = cy - r * Math.sin(mathAngleRad);
+ 
+            groupContent += `<text
+                x="${x.toFixed(2)}"
+                y="${y.toFixed(2)}"
+                text-anchor="middle"
+                dominant-baseline="central"
+                font-size="${fontSize}"
+                font-weight="600"
+                font-family="system-ui, -apple-system, sans-serif"
+                fill="rgba(255,255,255,0.95)"
+                transform="rotate(${charRotateDeg},${x.toFixed(2)},${y.toFixed(2)})"
+            >${label[i]}</text>`;
+        }
+ 
+        svgContent += groupContent;
     });
  
     if (elements.wheelLabels) {
@@ -186,7 +208,6 @@ function renderWheel() {
  
     console.log('转盘已渲染，扇区数量：', sliceCount);
 }
-
 
 /**
  * 更新转动次数状态显示
