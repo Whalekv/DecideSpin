@@ -106,91 +106,84 @@ async function loadCurrentWheelData() {
 
 
 /**
- * 渲染转盘（核心：动态生成 conic-gradient）
- * 根据当前条目数量生成彩色扇区
+ * 渲染转盘：conic-gradient 扇区 + SVG 竖排径向文字
+ *
+ * 文字排列原理（writing-mode="tb"）：
+ *   - writing-mode="tb" 让字符从上到下排列（第二字在第一字下方）
+ *   - transform 链：
+ *       translate(cx, cy)         → 原点移到圆心
+ *       rotate(rotateDeg)         → X轴对准扇区中心的径向方向（朝外）
+ *       rotate(-90)               → 将 writing-mode=tb 的"向下"旋转为"向外"
+ *       translate(0, -radialMid)  → 文字中心移到半径中点
+ *   - 最终效果：文字竖排，从转盘边缘指向圆心，居于扇区中线
  */
 function renderWheel() {
     if (currentItems.length === 0) {
         elements.wheel.style.background = '#334155';
-        elements.wheelLabels.innerHTML = '';
+        if (elements.wheelLabels) elements.wheelLabels.innerHTML = '';
         return;
     }
-
+ 
     const sliceCount = currentItems.length;
     const sliceAngle = 360 / sliceCount;
-
-    let gradientParts = [];
-    let currentAngle = 0;
-
+ 
+    // ---- conic-gradient ----
     const colors = [
         '#ef4444', '#f97316', '#eab308', '#22c55e',
         '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
     ];
-
+ 
+    let gradientParts = [];
+    let angleCursor = 0;
+ 
     currentItems.forEach((item, index) => {
         const color = colors[index % colors.length];
-        const nextAngle = currentAngle + sliceAngle;
-        gradientParts.push(`${color} ${currentAngle}deg ${nextAngle}deg`);
-        currentAngle = nextAngle;
+        const nextAngle = angleCursor + sliceAngle;
+        gradientParts.push(`${color} ${angleCursor}deg ${nextAngle}deg`);
+        angleCursor = nextAngle;
     });
-
-    const conicGradient = `conic-gradient(${gradientParts.join(', ')})`;
-    elements.wheel.style.background = conicGradient;
-
-    // ---- SVG 径向文字标签 ----
-    // SVG viewBox: 0 0 300 300，圆心 (150, 150)，转盘半径 = 150 - border(12) = 138
+ 
+    elements.wheel.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+ 
+    // ---- SVG 竖排文字 ----
+    // viewBox 300×300，圆心 (150,150)，.wheel 有 12px border
     const cx = 150, cy = 150;
-    const outerR = 138;   // 文字起始位置（靠近边缘）
-    const innerR = 50;    // 文字终止位置（靠近圆心）
-    const maxChars = 5;   // 最多显示5个字符
-
+    const outerR = 124;  // 文字顶端（靠近边缘，留出 border + 少许间距）
+    const innerR = 48;   // 文字底端（靠近圆心）
+    const radialMid = (outerR + innerR) / 2;
+    const maxChars = 5;
+    const fontSize = 13;
+ 
     let svgContent = '';
-
+ 
     currentItems.forEach((item, index) => {
-        // 截断文字，超5字显示省略号
-        let label = item.length > maxChars ? item.slice(0, maxChars) + '…' : item;
-
-        // 每个扇区中心角度（从0度=12点钟位置顺时针，CSS conic-gradient从顶部开始）
-        // CSS conic-gradient 0deg = 顶部（12点），顺时针
-        // SVG坐标：0deg = 右侧（3点），逆时针为正（标准数学），但 transform rotate = 顺时针
-        // 扇区中心角（CSS度）= index * sliceAngle + sliceAngle/2
+        const label = item.length > maxChars
+            ? item.slice(0, maxChars) + '…'
+            : item;
+ 
+        // 扇区中心角（CSS conic-gradient: 0°=顶部，顺时针）
         const midAngleDeg = index * sliceAngle + sliceAngle / 2;
-
-        // 将CSS角度转为SVG rotate角度（CSS: 0=top, clockwise → SVG: 0=right, clockwise with transform）
-        // SVG rotate(deg, cx, cy) 是从3点顺时针，所以需要 -90 偏移
+        // SVG rotate: 0°=右侧，顺时针，-90 对齐顶部
         const rotateDeg = midAngleDeg - 90;
-
-        // 文字路径：从外侧(outerR)到内侧(innerR)，沿半径方向
-        // 在旋转坐标系中，文字沿 x 轴方向排列
-        // 文字从边缘向圆心：起点 x = outerR，向左到 innerR，所以 textAnchor=end，x=outerR，方向向左
-        // 使用 writing-mode 竖排或 rotate 文字
-        // 最终方案：每个字符单独定位，或用 textPath，或用 transform
-        // 简单方案：文字居中在扇区，从边缘向内，用 rotate(rotateDeg) 后文字沿 x 轴（半径方向）
-        // 文字从右(边缘)到左(圆心)：x 从 -innerR 到 -outerR（负号因为文字朝向圆心）
-        // 让文字从边缘指向圆心（边缘=起点），textAnchor=start，x=-outerR（在旋转后指向圆心方向）
-
-        // 文字中点放在 (-(innerR + outerR)/2, 0)，旋转后在半径中央
-        const textX = -((innerR + outerR) / 2);
-        const textY = 0;
-
-        svgContent += `
-            <text
-                x="${textX}"
-                y="${textY}"
-                text-anchor="middle"
-                dominant-baseline="central"
-                font-size="13"
-                font-weight="600"
-                font-family="system-ui, -apple-system, sans-serif"
-                fill="rgba(255,255,255,0.95)"
-                style="text-shadow: 0 1px 3px rgba(0,0,0,0.6);"
-                transform="translate(${cx}, ${cy}) rotate(${rotateDeg}) rotate(180)"
-            >${label}</text>
-        `;
+ 
+        svgContent += `<text
+            x="0"
+            y="0"
+            text-anchor="middle"
+            dominant-baseline="central"
+            font-size="${fontSize}"
+            font-weight="600"
+            font-family="system-ui, -apple-system, sans-serif"
+            fill="rgba(255,255,255,0.95)"
+            writing-mode="tb"
+            transform="translate(${cx},${cy}) rotate(${rotateDeg}) rotate(-90) translate(0,${-radialMid})"
+        >${label}</text>`;
     });
-
-    elements.wheelLabels.innerHTML = svgContent;
-
+ 
+    if (elements.wheelLabels) {
+        elements.wheelLabels.innerHTML = svgContent;
+    }
+ 
     console.log('转盘已渲染，扇区数量：', sliceCount);
 }
 
