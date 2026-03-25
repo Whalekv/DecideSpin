@@ -34,22 +34,22 @@ let usedSpinTimes = 0;
 let spinResults = [];
 
 
-// ==================== DOM 元素 ====================
+// ==================== DOM 元素（在 DOMContentLoaded 后初始化）====================
 
-
-const elements = {
-    wheel: document.getElementById('wheel'),
-    resultsList: document.getElementById('results-list'),
-    spinBtn: document.getElementById('spin-btn'),
-    resetBtn: document.getElementById('reset-btn'),
-    openSettingBtn: document.getElementById('open-setting-btn'),
-    spinInfo: document.getElementById('spin-info')
-};
-
+let elements = {};
 
 // ==================== 初始化 ====================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 确保 DOM 就绪后再获取元素
+    elements.wheel = document.getElementById('wheel');
+    elements.wheelLabels = document.getElementById('wheel-labels');
+    elements.resultsList = document.getElementById('results-list');
+    elements.spinBtn = document.getElementById('spin-btn');
+    elements.resetBtn = document.getElementById('reset-btn');
+    elements.openSettingBtn = document.getElementById('open-setting-btn');
+    elements.spinInfo = document.getElementById('spin-info');
+
     await initPopup();
 });
 
@@ -112,16 +112,16 @@ async function loadCurrentWheelData() {
 function renderWheel() {
     if (currentItems.length === 0) {
         elements.wheel.style.background = '#334155';
+        elements.wheelLabels.innerHTML = '';
         return;
     }
 
     const sliceCount = currentItems.length;
-    const sliceAngle = 360 / sliceCount;   // 每个扇区角度
+    const sliceAngle = 360 / sliceCount;
 
     let gradientParts = [];
     let currentAngle = 0;
 
-    // 定义一组鲜明颜色（循环使用）
     const colors = [
         '#ef4444', '#f97316', '#eab308', '#22c55e',
         '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
@@ -130,18 +130,67 @@ function renderWheel() {
     currentItems.forEach((item, index) => {
         const color = colors[index % colors.length];
         const nextAngle = currentAngle + sliceAngle;
-        
-        // 每个扇区：颜色 从 currentAngle 到 nextAngle
         gradientParts.push(`${color} ${currentAngle}deg ${nextAngle}deg`);
-        
         currentAngle = nextAngle;
     });
 
     const conicGradient = `conic-gradient(${gradientParts.join(', ')})`;
-    
     elements.wheel.style.background = conicGradient;
-    
-    // 可选：给转盘加文字标签（后面再优化，这里先不加）
+
+    // ---- SVG 径向文字标签 ----
+    // SVG viewBox: 0 0 300 300，圆心 (150, 150)，转盘半径 = 150 - border(12) = 138
+    const cx = 150, cy = 150;
+    const outerR = 138;   // 文字起始位置（靠近边缘）
+    const innerR = 50;    // 文字终止位置（靠近圆心）
+    const maxChars = 5;   // 最多显示5个字符
+
+    let svgContent = '';
+
+    currentItems.forEach((item, index) => {
+        // 截断文字，超5字显示省略号
+        let label = item.length > maxChars ? item.slice(0, maxChars) + '…' : item;
+
+        // 每个扇区中心角度（从0度=12点钟位置顺时针，CSS conic-gradient从顶部开始）
+        // CSS conic-gradient 0deg = 顶部（12点），顺时针
+        // SVG坐标：0deg = 右侧（3点），逆时针为正（标准数学），但 transform rotate = 顺时针
+        // 扇区中心角（CSS度）= index * sliceAngle + sliceAngle/2
+        const midAngleDeg = index * sliceAngle + sliceAngle / 2;
+
+        // 将CSS角度转为SVG rotate角度（CSS: 0=top, clockwise → SVG: 0=right, clockwise with transform）
+        // SVG rotate(deg, cx, cy) 是从3点顺时针，所以需要 -90 偏移
+        const rotateDeg = midAngleDeg - 90;
+
+        // 文字路径：从外侧(outerR)到内侧(innerR)，沿半径方向
+        // 在旋转坐标系中，文字沿 x 轴方向排列
+        // 文字从边缘向圆心：起点 x = outerR，向左到 innerR，所以 textAnchor=end，x=outerR，方向向左
+        // 使用 writing-mode 竖排或 rotate 文字
+        // 最终方案：每个字符单独定位，或用 textPath，或用 transform
+        // 简单方案：文字居中在扇区，从边缘向内，用 rotate(rotateDeg) 后文字沿 x 轴（半径方向）
+        // 文字从右(边缘)到左(圆心)：x 从 -innerR 到 -outerR（负号因为文字朝向圆心）
+        // 让文字从边缘指向圆心（边缘=起点），textAnchor=start，x=-outerR（在旋转后指向圆心方向）
+
+        // 文字中点放在 (-(innerR + outerR)/2, 0)，旋转后在半径中央
+        const textX = -((innerR + outerR) / 2);
+        const textY = 0;
+
+        svgContent += `
+            <text
+                x="${textX}"
+                y="${textY}"
+                text-anchor="middle"
+                dominant-baseline="central"
+                font-size="13"
+                font-weight="600"
+                font-family="system-ui, -apple-system, sans-serif"
+                fill="rgba(255,255,255,0.95)"
+                style="text-shadow: 0 1px 3px rgba(0,0,0,0.6);"
+                transform="translate(${cx}, ${cy}) rotate(${rotateDeg}) rotate(180)"
+            >${label}</text>
+        `;
+    });
+
+    elements.wheelLabels.innerHTML = svgContent;
+
     console.log('转盘已渲染，扇区数量：', sliceCount);
 }
 
@@ -195,12 +244,16 @@ async function performSpin() {
     // 4. 执行旋转动画
     elements.wheel.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
     elements.wheel.style.transform = `rotate(${finalRotate}deg)`;
+    elements.wheelLabels.style.transition = 'transform 4s cubic-bezier(0.23, 1, 0.32, 1)';
+    elements.wheelLabels.style.transform = `rotate(${finalRotate}deg)`;
 
     // 5. 动画结束后处理结果
     setTimeout(() => {
         // 高亮选中扇区（简单实现：轻微缩放或提示）
         elements.wheel.style.transition = 'transform 0.3s';
         elements.wheel.style.transform = `rotate(${finalRotate}deg) scale(1.03)`;
+        elements.wheelLabels.style.transition = 'transform 0.3s';
+        elements.wheelLabels.style.transform = `rotate(${finalRotate}deg) scale(1.03)`;
 
         // 添加到结果列表
         spinResults.push(selectedItem);
@@ -212,6 +265,7 @@ async function performSpin() {
         // 恢复正常缩放
         setTimeout(() => {
             elements.wheel.style.transform = `rotate(${finalRotate}deg)`;
+            elements.wheelLabels.style.transform = `rotate(${finalRotate}deg)`;
         }, 300);
 
     }, 4000); // 等待4秒动画结束
@@ -254,6 +308,8 @@ async function resetPopup() {
         // 重置界面
         elements.wheel.style.background = '#334155';
         elements.wheel.style.transform = 'rotate(0deg)';
+        elements.wheelLabels.innerHTML = '';
+        elements.wheelLabels.style.transform = 'rotate(0deg)';
         elements.resultsList.innerHTML = '';
         
         updateSpinInfo();
