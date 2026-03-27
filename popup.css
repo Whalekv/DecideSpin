@@ -150,3 +150,29 @@ button {
     color: #94a3b8;
     text-align: center;
 }
+
+/* 顶部语言切换栏 */
+.top-bar {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 10px 10px 0;
+}
+
+.lang-toggle-btn {
+    background: #64748b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 110px;
+}
+
+.lang-toggle-btn:hover {
+    background: #475569;
+    transform: translateY(-1px);
+}

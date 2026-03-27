@@ -1,154 +1,470 @@
-/* setting.css */
+/* setting.css - 完全重构为左右布局，支持自适应与滚动 */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* 基础高度控制，让页面撑满视口 */
+html, body {
+    height: 100%;
+    width: 100%;
+    background: #f0f2f5;
+}
+
 body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f8f9fa;
-    color: #333;
-    line-height: 1.6;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color: #1e2a3e;
+    line-height: 1.5;
+    background: #f0f2f5;
+    padding: 16px;
 }
 
+/* 主容器：垂直flex，全高 + 最大宽度优雅居中 */
 .container {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
+    max-width: 1400px;
+    height: 100%;
+    margin: 0 auto;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border-radius: 28px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.2s ease;
 }
 
+/* 头部区域 */
 header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #eee;
+    padding: 20px 28px;
+    background: white;
+    border-bottom: 1px solid #eef2f6;
+    flex-shrink: 0;
 }
 
 h1 {
-    font-size: 28px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #2c3e50, #1e2f3f);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    letter-spacing: -0.3px;
+}
+
+#back-to-popup {
+    background: #f1f5f9;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 40px;
+    font-size: 0.9rem;
+    font-weight: 500;
     color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-h2, h3 {
-    color: #2c3e50;
-    margin: 20px 0 15px;
+#back-to-popup:hover {
+    background: #e6edf4;
+    transform: translateY(-1px);
 }
 
-.spin-count {
-    margin-bottom: 25px;
+/* 左右核心布局：flex 1 撑满剩余空间 */
+.split-layout {
+    display: flex;
+    flex: 1;
+    gap: 28px;
+    padding: 24px 28px 28px 28px;
+    min-height: 0;      /* 防止flex溢出 */
+    background: white;
 }
 
+/* ========= 左侧编辑区 ========= */
+.edit-section {
+    flex: 0 0 60%;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+/* 右侧方案区 */
+.preset-section {
+    flex: 0 0 40%;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid #edf2f7;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* 左侧内部滚动区域配置 */
+.edit-section > .spin-count,
+.edit-section > .items-header,
+.edit-section > .edit-actions {
+    flex-shrink: 0;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
+.edit-section > .spin-count {
+    padding-top: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f4f9;
+}
+
+.edit-section > .items-header {
+    padding-top: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f4f9;
+}
+
+.items-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 16px 16px 16px;
+    border: 1px solid #e9edf2;
+    border-radius: 20px;
+    background: #fefefe;
+    list-style: none;
+    min-height: 180px;
+}
+
+.edit-actions {
+    padding-bottom: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f4f9;
+    margin-top: 4px;
+}
+
+/* 右侧内部结构: 上一次方案区域 + 收藏列表区域 */
+.last-used-container {
+    height: 30%;
+    overflow-y: auto;
+    margin: 20px 20px 20px 20px;
+    background: #fafcff;
+    border-radius: 20px;
+    border: 1px solid #eef2f8;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.preset-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 20px 24px 20px;
+    padding-right: 2px;
+}
+
+/* 美化滚动条 */
+.items-list::-webkit-scrollbar,
+.preset-list::-webkit-scrollbar,
+.last-used-container::-webkit-scrollbar {
+    width: 6px;
+}
+.items-list::-webkit-scrollbar-track,
+.preset-list::-webkit-scrollbar-track,
+.last-used-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.items-list::-webkit-scrollbar-thumb,
+.preset-list::-webkit-scrollbar-thumb,
+.last-used-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* 样式细节 - 原有组件美化 */
 .spin-count label {
     font-weight: 600;
-    margin-right: 10px;
+    color: #1f3a4b;
+    font-size: 0.95rem;
 }
 
 .spin-count input {
-    width: 80px;
-    padding: 8px;
-    font-size: 16px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    width: 90px;
+    padding: 8px 12px;
+    font-size: 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    background: white;
+    font-weight: 500;
+    margin-left: 12px;
+    transition: 0.2s;
+}
+
+.spin-count input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
 }
 
 .items-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+    align-items: baseline;
 }
 
-.items-list {
-    list-style: none;
-    border: 2px solid #eee;
-    border-radius: 8px;
-    overflow: hidden;
-    min-height: 200px;
-    max-height: 420px;
-    overflow-y: auto;
+.items-header h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
 }
 
+#add-item {
+    background: #3b82f6;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+#add-item:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+/* 条目列表项布局 */
 .items-list li {
     display: flex;
     align-items: center;
-    padding: 12px 15px;
-    background: #fff;
-    border-bottom: 1px solid #eee;
     gap: 10px;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #edf2f7;
+    transition: background 0.1s ease;
 }
 
-.items-list li:last-child {
-    border-bottom: none;
+.items-list li:hover {
+    background: #fafcff;
 }
 
 .items-list input[type="text"] {
     flex: 1;
-    padding: 10px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    transition: 0.2s;
+}
+
+.items-list input[type="text"]:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
 }
 
 .items-list button {
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
     border: none;
-    border-radius: 4px;
+    border-radius: 32px;
     cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
-.items-list .move-up { background: #3498db; color: white; }
-.items-list .move-down { background: #3498db; color: white; }
-.items-list .delete-btn { background: #e74c3c; color: white; }
+.items-list .move-up, 
+.items-list .move-down {
+    background: #eef2ff;
+    color: #1e40af;
+}
 
+.items-list .move-up:hover,
+.items-list .move-down:hover {
+    background: #d9e6ff;
+    transform: scale(0.96);
+}
+
+.items-list .delete-btn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.items-list .delete-btn:hover {
+    background: #fecaca;
+}
+
+/* 编辑区大按钮 */
 .edit-actions {
-    margin-top: 25px;
     display: flex;
-    gap: 15px;
+    gap: 16px;
 }
 
 .primary-btn, .secondary-btn {
     flex: 1;
-    padding: 14px;
-    font-size: 16px;
+    padding: 12px 0;
+    font-size: 0.95rem;
     font-weight: 600;
     border: none;
-    border-radius: 8px;
+    border-radius: 40px;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
 .primary-btn {
-    background: #27ae60;
+    background: #10b981;
     color: white;
+    box-shadow: 0 2px 6px rgba(16,185,129,0.2);
 }
 
 .primary-btn:hover {
-    background: #219653;
+    background: #059669;
+    transform: translateY(-1px);
 }
 
 .secondary-btn {
-    background: #2980b9;
+    background: #3b82f6;
     color: white;
 }
 
 .secondary-btn:hover {
-    background: #2471a3;
+    background: #2563eb;
+    transform: translateY(-1px);
 }
 
+/* 预设卡片样式 */
 .preset-card {
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
+    background: #fefefe;
+    border: 1px solid #eef2f8;
+    border-radius: 20px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    word-break: break-word;      /* 自动换行 */
+    max-height: 200px;           /* 限制最大高度，超出滚动 */
+    overflow-y: auto;
 }
 
-.preset-list button {
+.preset-card:hover {
+    border-color: #cbdff2;
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+
+
+.preset-card small {
+    color: #5b6e8c;
+    font-size: 0.7rem;
+}
+
+.preset-card button {
+    margin-right: 10px;
+    margin-top: 10px;
+    padding: 6px 18px;
+    border: none;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.preset-card .use-preset-btn {
+    background: #eef2ff;
+    color: #1e3a8a;
+}
+
+.preset-card .use-preset-btn:hover {
+    background: #d9e6ff;
+}
+
+.preset-card .delete-preset-btn {
+    background: #fee2e2;
+    color: #9b2c2c;
+}
+
+.preset-card .delete-preset-btn:hover {
+    background: #fecaca;
+}
+
+/* last-used 区域内部样式 */
+.last-used-container h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 14px 18px 10px 18px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #eef2f8;
+}
+
+#last-used-content {
+    padding: 4px 16px 16px 16px;
+}
+
+.preset-card .use-lastused-btn {
+    background: #eef2ff;
+    color: #1f4a8a;
+    margin-top: 8px;
+}
+
+/* 方案列表为空时提示 */
+.preset-list p {
+    text-align: center;
+    color: #94a3b8;
+    padding: 32px 0;
+    font-size: 0.85rem;
+}
+
+/* 置顶按钮样式 */
+.preset-card .pin-preset-btn {
+    background: #fef3c7;
+    color: #b45309;
+    border: none;
+}
+
+.preset-card .pin-preset-btn:hover {
+    background: #fde68c;
+    transform: translateY(-1px);
+}
+
+/* 让三个按钮间距更舒适 */
+.preset-card button {
     margin-right: 8px;
+    margin-top: 10px;
+}
+
+/* 响应式：小于880px时改为上下布局保持易用性 */
+@media (max-width: 880px) {
+    body {
+        padding: 12px;
+    }
+    .split-layout {
+        flex-direction: column;
+        gap: 20px;
+    }
+    .edit-section, .preset-section {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 420px;
+    }
+    .last-used-container {
+        height: auto;
+        max-height: 180px;
+    }
+}
+
+/* 保证编辑区高度自适应 */
+.edit-section .items-list {
+    scroll-behavior: smooth;
 }

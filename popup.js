@@ -4,10 +4,12 @@ import {
     getCurrentConfig,
     incrementUsedSpinTimes,
     resetAll,
-    saveSpinResult,      // 新增
-    getSpinResults,      // 新增
-    clearSpinResults     // 新增
+    saveSpinResult,      
+    getSpinResults,      
+    clearSpinResults     
 } from './js/storage.js';
+
+import { getCurrentLanguage, setLanguage, t, toggleLanguage } from './js/i18n.js';
 
 
 // ==================== 全局变量说明 ====================
@@ -39,7 +41,17 @@ let spinResults = [];
 
 // ==================== DOM 元素（在 DOMContentLoaded 后初始化）====================
 
-let elements = {};
+let elements = {
+    wheel: null,
+    wheelLabels: null,
+    resultsList: null,
+    spinBtn: null,
+    resetBtn: null,
+    openSettingBtn: null,
+    spinInfo: null,
+    resultsTitle: null,
+    langToggle: null   // 新增
+};
 
 // ==================== 初始化 ====================
 
@@ -52,30 +64,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.resetBtn = document.getElementById('reset-btn');
     elements.openSettingBtn = document.getElementById('open-setting-btn');
     elements.spinInfo = document.getElementById('spin-info');
+    elements.resultsTitle = document.getElementById('results-title');  
+    elements.langToggle = document.getElementById('lang-toggle');       
 
     await initPopup();
 });
+
 
 /**
  * 初始化 popup 页面
  */
 async function initPopup() {
-    // 1. 初始化 storage 默认数据（防止首次使用为空）
+    // 1. 加载语言
+    await getCurrentLanguage();
+
+    // 2. 初始化 storage 默认数据
     await initDefaultDataIfNeeded();
 
-    // 2. 加载当前转盘数据
+    // 3. 加载当前转盘数据
     await loadCurrentWheelData();
 
-    // 加载并渲染结果历史
+    // 4. 加载并渲染结果历史
     await loadAndRenderResults();
 
-    // 3. 渲染转盘
+    // 5. 渲染转盘
     renderWheel();
 
-    // 4. 更新状态显示
+    // 6. 更新状态显示
     updateSpinInfo();
 
-    // 5. 绑定按钮事件
+    // 7. 应用语言
+    applyLanguageToPopup();
+
+    // 8. 绑定按钮事件
     bindEvents();
 }
 
@@ -88,6 +109,27 @@ async function initDefaultDataIfNeeded() {
     if (result.success) {
         console.log('已初始化默认数据');
     }
+}
+
+
+// ==================== 应用语言到popup页面 ====================
+
+/**
+ * 应用语言到 Popup 页面
+ */
+function applyLanguageToPopup() {
+    // 结果标题
+    if (elements.resultsTitle) {
+        elements.resultsTitle.textContent = t('resultsTitle');
+    }
+
+    // 操作按钮
+    if (elements.spinBtn) elements.spinBtn.textContent = t('spinBtn');
+    if (elements.resetBtn) elements.resetBtn.textContent = t('resetBtn');
+    if (elements.openSettingBtn) elements.openSettingBtn.textContent = t('openSettingBtn');
+
+    // 状态文字（动态部分在 updateSpinInfo 中处理）
+    updateSpinInfo();
 }
 
 
@@ -219,16 +261,15 @@ function renderWheel() {
  * 更新转动次数状态显示
  */
 function updateSpinInfo() {
-    elements.spinInfo.textContent = `已转动 ${usedSpinTimes} / ${totalSpinCount} 次`;
+    const text = t('spinInfoDefault').replace('0', usedSpinTimes).replace('0', totalSpinCount);
+    elements.spinInfo.textContent = text;
     
-    // 如果已达到最大次数，禁用开始按钮
     if (usedSpinTimes >= totalSpinCount || totalSpinCount === 0) {
         elements.spinBtn.disabled = true;
     } else {
         elements.spinBtn.disabled = false;
     }
 }
-
 
 // ==================== 转动核心逻辑 ====================
 
@@ -355,6 +396,25 @@ function bindEvents() {
     elements.openSettingBtn.addEventListener('click', () => {
         openSettingPage();
     });
+
+    // 语言切换按钮
+    if (elements.langToggle) {
+        elements.langToggle.addEventListener('click', async () => {
+            await toggleLanguage();           // 切换语言并保存到 storage
+
+            // 立即刷新当前 Popup 页面的语言
+            applyLanguageToPopup();
+
+            // 安全地通知 setting 页面（如果它打开着）
+            // 使用 try-catch 避免 "Receiving end does not exist" 错误
+            try {
+                chrome.runtime.sendMessage({ action: 'languageChanged' });
+            } catch (err) {
+                // 正常情况：setting 页面未打开，这是预期行为，不需要报错
+                console.log('No setting page is open, language change applied to popup only.');
+            }
+        });
+    }
 }
 
 

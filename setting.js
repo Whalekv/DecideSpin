@@ -7,9 +7,10 @@ import {
     getAllPresets,
     addPreset,
     deletePreset,
-    usePreset
+    usePreset,
+    setStorage
 } from './js/storage.js';
-
+import { getCurrentLanguage, setLanguage, t } from './js/i18n.js';
 
 // ==================== 全局变量说明 ====================
 
@@ -51,6 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. 初始化 storage 默认数据（如果需要）
     await initDefaultDataIfNeeded();
 
+    // 加载语言
+    await getCurrentLanguage();
     // 2. 加载上一次方案和所有 presets
     await loadLastUsed();
     await loadAllPresets();
@@ -58,8 +61,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. 加载当前编辑区（从 currentItems 开始）
     await loadCurrentEditingData();
 
+    // 渲染语言
+    applyLanguage();
+
     // 4. 绑定所有事件
     bindEvents();
+
+    // 监听来自 popup 的语言切换消息
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.action === 'languageChanged') {
+            getCurrentLanguage().then(() => {
+                applyLanguage();
+                loadLastUsed();
+                loadAllPresets();
+            });
+        }
+    });
 });
 
 
@@ -98,27 +115,44 @@ async function loadCurrentEditingData() {
  */
 function renderItemsList() {
     elements.itemsList.innerHTML = '';
-
+    
     currentEditingItems.forEach((item, index) => {
         const li = document.createElement('li');
-
+        const displayValue = item === undefined ? '' : item;
+        
         li.innerHTML = `
-            <input type="text" value="${item}" data-index="${index}">
+            <input type="text" 
+                   value="${escapeHtml(displayValue)}" 
+                   data-index="${index}" 
+                   placeholder="${t('itemPlaceholder')}">
             <button class="move-up" data-index="${index}">↑</button>
             <button class="move-down" data-index="${index}">↓</button>
-            <button class="delete-btn" data-index="${index}">删除</button>
+            <button class="delete-btn" data-index="${index}">${t('deleteBtn')}</button>
         `;
-
+        
         elements.itemsList.appendChild(li);
     });
-
-    // 更新计数
+    
     elements.itemCount.textContent = `(${currentEditingItems.length})`;
-
-    // 绑定当前列表内的事件
     bindItemListEvents();
 }
 
+/**
+ * 转译Html特定符合
+ * @param {*} str 
+ * @returns {string}
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+        return c;
+    });
+}
 
 /**
  * 绑定条目列表中每个按钮的事件（上移、下移、删除、输入变化）
@@ -161,7 +195,7 @@ function bindItemListEvents() {
         btn.addEventListener('click', (e) => {
             const index = parseInt(e.target.dataset.index);
             if (currentEditingItems.length <= 2) {
-                alert('至少需要保留 2 个条目！');
+                alert(t('atLeast2Items'));
                 return;
             }
             currentEditingItems.splice(index, 1);
@@ -176,7 +210,7 @@ function bindItemListEvents() {
  */
 function addNewItem() {
     if (currentEditingItems.length >= 50) {
-        alert('条目数量最多不能超过 50 个！');
+        alert(t('max50Items'));
         return;
     }
     currentEditingItems.push('');
@@ -188,6 +222,9 @@ function addNewItem() {
         if (lastInput) lastInput.focus();
     }, 10);
 }
+
+
+
 
 
 // ==================== 主按钮与事件绑定 ====================
@@ -205,42 +242,72 @@ function bindEvents() {
         currentEditingSpinCount = parseInt(elements.spinCountInput.value) || 1;
     });
 
-    // 「确定」按钮 - 保存当前配置并生效到转盘
+    // 「确定」按钮
     elements.saveCurrentBtn.addEventListener('click', async () => {
         const result = await saveCurrentConfig(currentEditingItems, currentEditingSpinCount);
         
         if (result.success) {
-            alert('保存成功！转盘已更新为当前方案');
-            // 保存成功后刷新上一次方案显示
+            alert(t(result.messageKey || 'saveSuccess'));
             await loadLastUsed();
         } else {
-            alert('保存失败：' + result.message);
+            alert(t(result.messageKey || 'saveFailed'));
         }
     });
 
     // 「收藏为新方案」按钮
     elements.collectPresetBtn.addEventListener('click', async () => {
-        const name = prompt('请输入方案名称（不可重复）：');
+        const name = prompt(t('enterPresetName'));
         if (!name || name.trim() === '') return;
 
         const result = await addPreset(name.trim(), currentEditingItems, currentEditingSpinCount);
         
         if (result.success) {
-            alert(result.message);
-            await loadAllPresets();   // 刷新方案列表
+            alert(t(result.messageKey || 'collectSuccess'));
+            await loadAllPresets();
         } else {
-            alert('收藏失败：' + result.message);
+           alert(t(result.messageKey || 'operationFailed'));
         }
     });
 
     // 「返回转盘」按钮
     elements.backToPopupBtn.addEventListener('click', () => {
-        window.close();   // 关闭当前设置标签页，返回 popup
+        window.close();
     });
 }
 
 
+// ==================== 应用当前语言到所有固定文本 ====================
+
+
+/**
+ * 应用当前语言到所有固定文本
+ */
+function applyLanguage() {
+    // header
+    document.querySelector('h1').textContent = t('extensionName');
+    elements.backToPopupBtn.textContent = t('backToWheel');
+
+    // 左侧
+    document.querySelector('.spin-count label').textContent = t('spinCountLabel');
+    document.querySelector('.items-header h3').childNodes[0].textContent = t('itemsListTitle') + ' '; // 保留 span
+
+    elements.addItemBtn.textContent = t('addItemBtn');
+    elements.saveCurrentBtn.textContent = t('saveCurrentBtn');
+    elements.collectPresetBtn.textContent = t('collectPresetBtn');
+    
+    // 右侧标题
+    const titles = document.querySelectorAll('.preset-section h3');
+    if (titles[0]) titles[0].textContent = t('lastUsedTitle');
+    if (titles[1]) titles[1].textContent = t('presetsTitle');
+
+    // 动态内容会通过 loadAllPresets / loadLastUsed 重新渲染
+    // 所以我们在那些函数里也用 t()
+    renderItemsList();
+}
+
+
 // ==================== 上一次方案与收藏方案渲染 ====================
+
 
 /**
  * 加载并显示「上一次方案」
@@ -248,16 +315,19 @@ function bindEvents() {
 async function loadLastUsed() {
     const lastUsed = await getLastUsed();
     if (!lastUsed) {
-        elements.lastUsedContent.innerHTML = `<p>暂无上一次方案</p>`;
+        elements.lastUsedContent.innerHTML = `<p>${t('noPresets')}</p>`;
         return;
     }
 
+    const itemsText = lastUsed.items.join('、');
+    
     elements.lastUsedContent.innerHTML = `
         <div class="preset-card">
-            <strong>最后保存时间：</strong> ${new Date(lastUsed.timestamp).toLocaleString('zh-CN')}<br>
-            <strong>条目数量：</strong> ${lastUsed.items.length} 个<br>
-            <strong>转动次数：</strong> ${lastUsed.spinCount} 次<br><br>
-            <button class="use-lastused-btn">使用此方案</button>
+            <strong>${t('lastSavedTime')}：</strong> ${new Date(lastUsed.timestamp).toLocaleString('zh-CN')}<br>
+            <strong>${t('itemCountLabel')}：</strong> ${lastUsed.items.length} <br>
+            <strong>${t('itemContentLabel')}：</strong> ${itemsText}<br>
+            <strong>${t('spinCountLabel')}：</strong> ${lastUsed.spinCount}<br><br>
+            <button class="use-lastused-btn">${t('useBtn')}</button>
         </div>
     `;
 
@@ -276,30 +346,37 @@ async function loadAllPresets() {
     elements.presetList.innerHTML = '';
 
     if (Object.keys(presets).length === 0) {
-        elements.presetList.innerHTML = '<p>暂无收藏方案</p>';
+        elements.presetList.innerHTML = `<p>${t('noPresets')}</p>`;
         return;
     }
 
-    Object.values(presets).forEach(preset => {
+    const sortedPresets = Object.values(presets).sort((a, b) => 
+        new Date(b.lastUsed) - new Date(a.lastUsed)
+    );
+
+    sortedPresets.forEach(preset => {
         const div = document.createElement('div');
+        const itemsText = preset.items.join('、');
         div.className = 'preset-card';
         div.innerHTML = `
-            <strong>${preset.name}</strong><br>
-            <small>最后使用：${new Date(preset.lastUsed).toLocaleString('zh-CN')}</small><br>
-            条目：${preset.items.length} 个 | 次数：${preset.spinCount}<br><br>
-            <button class="use-preset-btn" data-name="${preset.name}">使用</button>
-            <button class="delete-preset-btn" data-name="${preset.name}">删除</button>
+            <strong>${escapeHtml(preset.name)}</strong><br>
+            <small>${t('lastUsedTime')}：${new Date(preset.lastUsed).toLocaleString('zh-CN')}</small><br>
+            <span>${t('itemCountLabel')}：${preset.items.length} </span><br>
+            <span>${t('itemContentLabel')}：${itemsText}</span><br>
+            <span>${t('spinCountLabel')}：${preset.spinCount}</span><br><br>
+            <button class="use-preset-btn" data-name="${escapeHtml(preset.name)}">${t('useBtn')}</button>
+            <button class="pin-preset-btn" data-name="${escapeHtml(preset.name)}">${t('pinBtn')}</button>
+            <button class="delete-preset-btn" data-name="${escapeHtml(preset.name)}">${t('deleteBtn')}</button>
         `;
         elements.presetList.appendChild(div);
     });
 
-    // 绑定使用和删除按钮
+    // 绑定使用、置顶、删除按钮
     bindPresetButtons();
 }
 
-
 /**
- * 绑定所有方案卡片上的使用/删除按钮
+ * 绑定所有方案卡片上的使用/置顶/删除按钮
  */
 function bindPresetButtons() {
     // 使用按钮
@@ -315,10 +392,25 @@ function bindPresetButtons() {
         });
     });
 
+    // 置顶按钮
+    elements.presetList.querySelectorAll('.pin-preset-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const name = e.target.dataset.name;
+            const result = await pinPresetToTop(name);
+            
+            if (result.success) {
+                alert(t('pinSuccess', name));
+                await loadAllPresets();   // 重新渲染，让置顶方案排在最前面
+            } else {
+                alert(result.message || t('FailedPin'));
+            }
+        });
+    });
+
     // 删除按钮
     elements.presetList.querySelectorAll('.delete-preset-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            if (!confirm('确定要删除这个方案吗？')) return;
+            if (!confirm(t('deleteConfirm'))) return;
             
             const name = e.target.dataset.name;
             const result = await deletePreset(name);
@@ -345,7 +437,28 @@ function useSchemeData(items, spinCount) {
     elements.spinCountInput.value = spinCount;
     renderItemsList();
     
-    alert('已加载到当前编辑区，您可以继续修改后点击「确定」生效');
+    alert(t('useLoaded'));
+}
+
+
+/**
+ * 将指定收藏方案置顶（通过更新 lastUsed 时间实现排序到最前面）
+ * @param {string} name 方案名称
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function pinPresetToTop(name) {
+    const presets = await getAllPresets();
+    
+    if (!presets[name]) {
+        return { success: false, message: t('ItemDoesNotExist') };
+    }
+
+    // 更新最后使用时间（越新越靠前）
+    presets[name].lastUsed = new Date().toISOString();
+
+    await setStorage({ presets });   // 注意：这里直接用 { presets } 即可，因为 storage.js 中 key 是 'presets'
+
+    return { success: true };
 }
 
 

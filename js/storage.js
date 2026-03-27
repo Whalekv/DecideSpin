@@ -8,8 +8,9 @@ const STORAGE_KEYS = {
   USED_SPIN_TIMES: 'usedSpinTimes',
   LAST_USED: 'lastUsed',
   PRESETS: 'presets',
-  SPIN_RESULTS: 'spinResults' 
+  SPIN_RESULTS: 'spinResults',
 };
+
 
 
 // DEFAULT_DATA: 首次安装或数据为空时使用的示例数据
@@ -71,39 +72,38 @@ async function shouldInitDefaultData() {
 /**
  * 数据验证：检查条目数组是否合法
  * @param {string[]} items 
- * @returns {{success: boolean, message?: string}}
+ * @returns {{success: boolean, messageKey?: string}}
  */
 function validateItems(items) {
   if (!Array.isArray(items)) {
-    return { success: false, message: "条目必须是数组" };
+    return { success: false, messageKey: "itemsMustBeArray" };
   }
   if (items.length < 2) {
-    return { success: false, message: "条目数量至少需要 2 个" };
+    return { success: false, messageKey: "atLeast2Items" };
   }
   if (items.length > 50) {
-    return { success: false, message: "条目数量最多不能超过 50 个" };
+    return { success: false, messageKey: "max50Items" };
   }
   if (items.some(item => typeof item !== 'string' || item.trim() === '')) {
-    return { success: false, message: "所有条目必须是非空字符串" };
+    return { success: false, messageKey: "allItemsMustBeNonEmpty" };
   }
   return { success: true };
 }
 
-
 /**
  * 数据验证：检查转动次数是否合法
  * @param {number} count 
- * @returns {{success: boolean, message?: string}}
+ * @returns {{success: boolean, messageKey?: string}}
  */
 function validateSpinCount(count) {
   if (typeof count !== 'number' || !Number.isInteger(count)) {
-    return { success: false, message: "转动次数必须是整数" };
+    return { success: false, messageKey: "spinCountMustBeInteger" };
   }
   if (count < 1) {
-    return { success: false, message: "转动次数最小为 1" };
+    return { success: false, messageKey: "spinCountMin1" };
   }
   if (count > 10) {
-    return { success: false, message: "转动次数最大为 10" };
+    return { success: false, messageKey: "spinCountMax10" };
   }
   return { success: true };
 }
@@ -183,18 +183,18 @@ async function getCurrentConfig() {
  * 调用此方法会同时更新 lastUsed，并重置 usedSpinTimes 为 0
  * @param {string[]} items 
  * @param {number} spinCount 
- * @returns {Promise<{success: boolean, message?: string}>}
+ * @returns {Promise<{success: boolean, messageKey?: string}>}
  */
 async function saveCurrentConfig(items, spinCount) {
   // 数据验证
   const itemsValid = validateItems(items);
   if (!itemsValid.success) {
-    return { success: false, message: itemsValid.message };
+    return { success: false, messageKey: itemsValid.messageKey };
   }
 
   const countValid = validateSpinCount(spinCount);
   if (!countValid.success) {
-    return { success: false, message: countValid.message };
+    return { success: false, messageKey: countValid.messageKey };
   }
 
   const now = new Date().toISOString();
@@ -249,7 +249,7 @@ async function incrementUsedSpinTimes() {
   if (used >= max) {
     return { 
       success: false, 
-      message: "已达到本次最大转动次数，请前往设置页面调整" 
+      messageKey: "maxSpinCountReached" 
     };
   }
 
@@ -258,7 +258,6 @@ async function incrementUsedSpinTimes() {
 
   return { 
     success: true, 
-    message: `已转动 ${used} 次`,
     currentUsed: used 
   };
 }
@@ -309,27 +308,30 @@ async function getAllPresets() {
  * @param {string} name 
  * @param {string[]} items 
  * @param {number} spinCount 
- * @returns {Promise<{success: boolean, message?: string}>}
+ * @returns {Promise<{success: boolean, messageKey?: string}>}
+ */
+/**
+ * 添加新方案（方案名称不允许重复）
  */
 async function addPreset(name, items, spinCount) {
   if (!name || typeof name !== 'string' || name.trim() === '') {
-    return { success: false, message: "方案名称不能为空" };
+    return { success: false, messageKey: "presetNameCannotBeEmpty" };
   }
 
   const presets = await getAllPresets();
 
   if (presets[name]) {
-    return { success: false, message: "方案名称已存在，请使用其他名称" };
+    return { success: false, messageKey: "presetNameAlreadyExists" };
   }
 
   const itemsValid = validateItems(items);
   if (!itemsValid.success) {
-    return { success: false, message: itemsValid.message };
+    return { success: false, messageKey: itemsValid.messageKey };
   }
 
   const countValid = validateSpinCount(spinCount);
   if (!countValid.success) {
-    return { success: false, message: countValid.message };
+    return { success: false, messageKey: countValid.messageKey };
   }
 
   const now = new Date().toISOString();
@@ -344,7 +346,10 @@ async function addPreset(name, items, spinCount) {
   presets[name.trim()] = newPreset;
 
   await setStorage({ [STORAGE_KEYS.PRESETS]: presets });
-  return { success: true, message: `方案 "${name.trim()}" 已收藏` };
+  return { 
+    success: true, 
+    messageKey: "presetSavedSuccess" 
+  };
 }
 
 
@@ -356,12 +361,15 @@ async function addPreset(name, items, spinCount) {
 async function deletePreset(name) {
   const presets = await getAllPresets();
   if (!presets[name]) {
-    return { success: false, message: "方案不存在" };
+    return { success: false, messageKey: "presetNotFound" };
   }
 
   delete presets[name];
   await setStorage({ [STORAGE_KEYS.PRESETS]: presets });
-  return { success: true, message: `方案 "${name}" 已删除` };
+  return { 
+    success: true, 
+    messageKey: "presetDeletedSuccess" 
+  };
 }
 
 
@@ -375,7 +383,7 @@ async function usePreset(name) {
   const preset = presets[name];
 
   if (!preset) {
-    return { success: false, message: "方案不存在" };
+    return { success: false, messageKey: "presetNotFound" };
   }
 
   return {
@@ -404,6 +412,7 @@ export {
   usePreset,
   saveSpinResult,      // 新增导出
   getSpinResults,      // 新增导出
-  clearSpinResults     // 新增导出
+  clearSpinResults,     // 新增导出
+  setStorage
 };
 

@@ -9,52 +9,54 @@
 <body>
     <div class="container">
         <header>
-            <h1>随机转盘 设置</h1>
+            <h1>随机转盘 · 设置</h1>
             <button id="back-to-popup">← 返回转盘</button>
         </header>
 
-        <!-- 当前编辑区 -->
-        <section class="edit-section">
-            <h2>当前编辑方案</h2>
-            
-            <!-- 转动次数 -->
-            <div class="spin-count">
-                <label for="spinCount">本次转动次数：</label>
-                <input type="number" id="spinCount" min="1" max="10" value="3">
-            </div>
-
-            <!-- 条目列表 -->
-            <div class="items-header">
-                <h3>选项条目列表 <span id="item-count">(0)</span></h3>
-                <button id="add-item">+ 新增条目</button>
-            </div>
-
-            <ul id="items-list" class="items-list"></ul>
-
-            <!-- 操作按钮 -->
-            <div class="edit-actions">
-                <button id="save-current" class="primary-btn">确定（保存并生效到转盘）</button>
-                <button id="collect-preset" class="secondary-btn">收藏为新方案</button>
-            </div>
-        </section>
-
-        <!-- 方案管理区 -->
-        <section class="preset-section">
-            <h2>已收藏方案</h2>
-            
-            <!-- 上一次方案 -->
-            <div class="last-used" id="last-used-container">
-                <h3>上一次方案</h3>
-                <div id="last-used-content" class="preset-card">
-                    <p>暂无上一次方案</p>
+        <!-- 左右布局核心容器 -->
+        <div class="split-layout">
+            <!-- 左侧编辑区 -->
+            <section class="edit-section">
+                <!-- 转动次数 -->
+                <div class="spin-count">
+                    <label for="spinCount">本次转动次数：</label>
+                    <input type="number" id="spinCount" min="1" max="10" value="3">
                 </div>
-            </div>
 
-            <!-- 所有收藏方案 -->
-            <div class="preset-list" id="preset-list">
-                <!-- 动态生成 -->
-            </div>
-        </section>
+                <!-- 条目列表头部 -->
+                <div class="items-header">
+                    <h3>📋 选项条目列表 <span id="item-count">(0)</span></h3>
+                    <button id="add-item">+ 新增条目</button>
+                </div>
+
+                <!-- 条目动态列表（可滚动） -->
+                <ul id="items-list" class="items-list"></ul>
+
+                <!-- 底部操作按钮组 -->
+                <div class="edit-actions">
+                    <button id="save-current" class="primary-btn">✅ 确定（保存并生效到转盘）</button>
+                    <button id="collect-preset" class="secondary-btn">⭐ 收藏为新方案</button>
+                </div>
+            </section>
+
+            <!-- 右侧方案管理区 -->
+            <section class="preset-section">
+                <!-- 上一次方案区域（高度30%） -->
+                <h3>📌 上一次方案</h3>
+                <div class="last-used-container" id="last-used-container">
+                    
+                    <div id="last-used-content" class="preset-card" style="border: none; background: transparent; box-shadow: none; margin-bottom: 0;">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+
+                <!-- 所有收藏方案列表（填充剩余高度） -->
+                 <h3>📌 收藏</h3>
+                <div class="preset-list" id="preset-list">
+                    <!-- 动态生成 -->
+                </div>
+            </section>
+        </div>
     </div>
 
     <script type="module" src="setting.js"></script>
