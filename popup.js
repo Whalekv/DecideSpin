@@ -32,11 +32,6 @@ let totalSpinCount = 0;
  */
 let usedSpinTimes = 0;
 
-/**
- * 存储每次转动的结果（用于结果列表展示）
- * @type {string[]}
- */
-let spinResults = [];
 
 
 // ==================== DOM 元素（在 DOMContentLoaded 后初始化）====================
@@ -118,6 +113,11 @@ async function initDefaultDataIfNeeded() {
  * 应用语言到 Popup 页面
  */
 function applyLanguageToPopup() {
+    // 标题
+    const titleEl = document.getElementById('wheel-title');
+    if (titleEl) {
+        titleEl.textContent = t('extensionName');
+    }
     // 结果标题
     if (elements.resultsTitle) {
         elements.resultsTitle.textContent = t('resultsTitle');
@@ -355,7 +355,7 @@ function renderResultsList(results) {
  * 重置整个 popup（对应「重置」按钮）
  */
 async function resetPopup() {
-    if (!confirm('确定要重置吗？当前转盘数据和所有结果将被清除，需要重新进入设置页面配置。')) {
+    if (!confirm(t('resetConfirm'))) {
         return;
     }
 
@@ -370,7 +370,7 @@ async function resetPopup() {
         renderResultsList(emptyResults);
 
         updateSpinInfo();
-        alert('已重置！请点击「前往设置」重新配置转盘。');
+        alert(t('resetSuccess'));
     }
 }
 

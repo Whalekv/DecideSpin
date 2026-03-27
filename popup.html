@@ -8,36 +8,56 @@
 </head>
 <body>
     <div class="container">
-        <!-- 顶部语言切换栏 -->
+        <!-- 顶部栏 -->
         <div class="top-bar">
+            <div class="title">
+                <span id="wheel-title">随机转盘</span>
+            </div>
             <button id="lang-toggle" class="lang-toggle-btn">
                 🇨🇳 / 🇬🇧
             </button>
         </div>
-        <!-- 转盘区域 -->
-        <div class="wheel-container">
-            <div id="wheel" class="wheel"></div>
-            <svg id="wheel-labels" class="wheel-labels" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"></svg>
-            <div class="pointer"></div>
+
+        <!-- 转盘核心区域 -->
+        <div class="wheel-wrapper">
+            <div class="wheel-container">
+                <div id="wheel" class="wheel"></div>
+                <svg id="wheel-labels" class="wheel-labels" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div class="pointer"></div>
+            </div>
         </div>
 
-        <!-- 结果区域 -->
-         <h3>本次转动结果</h3>
-        <div class="results-panel">
-            <ol id="results-list"></ol>
+        <!-- 状态 + 进度条 -->
+        <div class="status-bar">
+            <span id="spin-info" class="spin-info-text">已转动 0 / 0 次</span>
         </div>
 
         <!-- 操作按钮区 -->
         <div class="actions">
-            <button id="spin-btn" class="spin-btn">开始转动</button>
-            <button id="reset-btn" class="reset-btn">重置</button>
-            <button id="open-setting-btn" class="setting-btn">前往设置</button>
+            <button id="spin-btn" class="spin-btn primary">开始转动</button>
+            <div class="secondary-actions">
+                <button id="reset-btn" class="reset-btn">重置</button>
+                <button id="open-setting-btn" class="setting-btn">前往设置</button>
+            </div>
         </div>
 
-        <!-- 状态信息 -->
-        <div class="status">
-            <span id="spin-info">已转动 0 / 0 次</span>
+        <!-- 结果区域 -->
+        <div class="results-card">
+            <div class="results-header">
+                <h3 id="results-title">本次转动结果</h3>
+            </div>
+            <div class="results-panel">
+                <ol id="results-list"></ol>
+                
+                <!-- 空状态提示 -->
+                <div id="empty-state" class="empty-state">
+                    <span>🎡</span>
+                    <p>点击「开始转动」开始吧</p>
+                </div>
+            </div>
         </div>
+
+
     </div>
 
     <script type="module" src="popup.js"></script>
