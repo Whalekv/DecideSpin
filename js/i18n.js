@@ -59,7 +59,7 @@ export const translations = {
 
     },
     en: {
-        extensionName: "Random Wheel",
+        extensionName: "DecideSpin",
         backToWheel: "← Back to Wheel",
         spinCountLabel: "Spin Count:",
         itemsListTitle: "📋 Options List",

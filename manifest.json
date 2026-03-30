@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "随机转盘",
-  "description": "一个完全由用户自定义的随机决策转盘工具",
-  "version": "1.0.0",
+  "name": "DecideSpin (随机转盘)",
+  "description": "Have trouble making choices? Just click once! 有选择困难症？只需要点击一下！",
+  "version": "1.0.1",
   "icons": {
-    "48": "icons/icon-48.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "随机转盘"
+    "default_title": "DecideSpin (随机转盘)"
   },
   "permissions": [
     "storage"

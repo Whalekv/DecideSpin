@@ -171,89 +171,84 @@ function renderWheel() {
         if (elements.wheelLabels) elements.wheelLabels.innerHTML = '';
         return;
     }
- 
+
     const sliceCount = currentItems.length;
     const sliceAngle = 360 / sliceCount;
- 
+
     // ---- conic-gradient ----
     const colors = [
         '#ef4444', '#f97316', '#eab308', '#22c55e',
         '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
     ];
- 
+
     let gradientParts = [];
     let angleCursor = 0;
- 
+
     currentItems.forEach((item, index) => {
         const color = colors[index % colors.length];
         const nextAngle = angleCursor + sliceAngle;
         gradientParts.push(`${color} ${angleCursor}deg ${nextAngle}deg`);
         angleCursor = nextAngle;
     });
- 
+
     elements.wheel.style.background = `conic-gradient(${gradientParts.join(', ')})`;
- 
-    // ---- SVG 竖排文字（逐字符极坐标定位）----
-    // viewBox 300×300，圆心 (150,150)，.wheel 有 12px border
-    // 不使用 writing-mode，改为逐字符计算 (x,y) 坐标，沿径向排列
-    // 每个字符绕自身中心旋转，朝向与半径方向垂直（即字的"顶"朝外）
+
+    // ---- SVG 横排文字（foreignObject + 自动换行）----
     const cx = 150, cy = 150;
-    const outerR = 122;   // 文字最外侧字符的中心
-    const innerR = 50;    // 文字最内侧字符的中心
-    const maxChars = 5;
-    const fontSize = 13;
-    const charStep = (outerR - innerR) / (maxChars - 1 || 1); // 字符间距
- 
+    // 文字区域：从半径 48 到 122，宽度沿弦方向
+    const textR = 85;          // 文字块中心所在半径
+    const textAreaLen = 70;    // 文字块沿径向的长度
+    const fontSize = 12;
+
     let svgContent = '';
- 
+
     currentItems.forEach((item, index) => {
-        const label = item.length > maxChars
-            ? item.slice(0, maxChars) + '…'
-            : item;
- 
-        // 扇区中心角（CSS conic-gradient: 0°=顶部，顺时针）转为标准数学角（弧度）
-        // CSS 0° = 顶部 = 数学 90°（3点钟为0），顺时针 = 数学逆时针
-        // 所以：数学角 = 90° - midAngleDeg（CSS）
         const midAngleDeg = index * sliceAngle + sliceAngle / 2;
-        const mathAngleRad = (90 - midAngleDeg) * Math.PI / 180;
- 
-        const charCount = label.length;
-        // 所有字符占用的总径向长度
-        const totalSpan = (charCount - 1) * charStep;
-        // 第一个字符的半径（最靠外）
-        const startR = (outerR + innerR) / 2 + totalSpan / 2;
- 
-        // 每个字符需要旋转的角度：使字符"正立"朝向圆心
-        // 在标准坐标系中，字符顶朝上(90°)，需旋转到指向圆心方向
-        // 字符朝向 = midAngleDeg（从顶部顺时针），转为 SVG rotate 角度
-        const charRotateDeg = midAngleDeg;
- 
-        let groupContent = '';
-        for (let i = 0; i < charCount; i++) {
-            const r = startR - i * charStep; // 从外到内
-            const x = cx + r * Math.cos(mathAngleRad);
-            const y = cy - r * Math.sin(mathAngleRad);
- 
-            groupContent += `<text
-                x="${x.toFixed(2)}"
-                y="${y.toFixed(2)}"
-                text-anchor="middle"
-                dominant-baseline="central"
-                font-size="${fontSize}"
-                font-weight="600"
-                font-family="system-ui, -apple-system, sans-serif"
-                fill="rgba(255,255,255,0.95)"
-                transform="rotate(${charRotateDeg},${x.toFixed(2)},${y.toFixed(2)})"
-            >${label[i]}</text>`;
-        }
- 
-        svgContent += groupContent;
+
+        // 每个扇区在半径 textR 处的弦长，作为文字块宽度
+        const halfChord = textR * Math.tan((sliceAngle / 2) * Math.PI / 180);
+        const boxW = Math.min(halfChord * 2 * 0.82, 80); // 留一点边距
+        const boxH = textAreaLen;
+
+        // foreignObject 左上角坐标（在旋转前，以圆心为原点）
+        const fx = -boxW / 2;
+        const fy = -(textR + boxH / 2);
+
+        // 旋转角度：使文字块指向扇区中心
+        // SVG rotate: 0° = 上方，顺时针为正
+        const rotateDeg = midAngleDeg;
+
+        svgContent += `
+        <foreignObject
+            x="${fx.toFixed(2)}"
+            y="${fy.toFixed(2)}"
+            width="${boxW.toFixed(2)}"
+            height="${boxH.toFixed(2)}"
+            transform="rotate(${rotateDeg}, ${cx}, ${cy}) translate(${cx}, ${cy})"
+            overflow="visible"
+        >
+            <div xmlns="http://www.w3.org/1999/xhtml" style="
+                width: ${boxW.toFixed(2)}px;
+                height: ${boxH.toFixed(2)}px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: ${fontSize}px;
+                font-weight: 600;
+                font-family: system-ui, -apple-system, sans-serif;
+                color: rgba(255,255,255,0.95);
+                word-break: break-all;
+                line-height: 1.3;
+                overflow: hidden;
+            ">${item}</div>
+        </foreignObject>`;
     });
- 
+
     if (elements.wheelLabels) {
         elements.wheelLabels.innerHTML = svgContent;
     }
- 
+
     console.log('转盘已渲染，扇区数量：', sliceCount);
 }
 
